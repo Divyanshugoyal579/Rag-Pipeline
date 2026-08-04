@@ -1,0 +1,2 @@
+[2026-07-28 16:05:56:556] [[32minfo[39m]: [32mConnecting to MongoDB...[39m
+[2026-07-28 16:06:26:626] [[31merror[39m]: [31mCritical error starting API Gateway server: MongooseServerSelectionError: connect ECONNREFUSED ::1:27017, connect ECONNREFUSED 127.0.0.1:27017[39m

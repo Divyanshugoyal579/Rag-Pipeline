@@ -1,0 +1,29 @@
+server:
+  port: 8081
+  servlet:
+    context-path: /api/documents
+
+spring:
+  application:
+    name: spring-document-service
+
+  data:
+    mongodb:
+      uri: mongodb://admin:admin_password@localhost:27017/rag_auth_db?authSource=admin
+    redis:
+      url: redis://localhost:6379
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+ai-service:
+  url: http://localhost:8000
+
+logging:
+  level:
+    root: INFO
+    com.enterprise.rag: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

@@ -1,0 +1,11 @@
+[2026-07-28 16:22:26,034] [INFO] [rag-ai-service]: Starting up FastAPI AI service...
+[2026-07-28 16:22:26,392] [ERROR] [rag-ai-service]: Error initializing databases: (psycopg.OperationalError) connection failed: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "rag_user"
+Multiple connection attempts failed. All failures were:
+- host: 'localhost', port: 5432, hostaddr: '::1': connection failed: connection to server at "::1", port 5432 failed: FATAL:  password authentication failed for user "rag_user"
+- host: 'localhost', port: 5432, hostaddr: '127.0.0.1': connection failed: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "rag_user"
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-07-28 16:22:26,393] [CRITICAL] [rag-ai-service]: Database initialization failed during startup: (psycopg.OperationalError) connection failed: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "rag_user"
+Multiple connection attempts failed. All failures were:
+- host: 'localhost', port: 5432, hostaddr: '::1': connection failed: connection to server at "::1", port 5432 failed: FATAL:  password authentication failed for user "rag_user"
+- host: 'localhost', port: 5432, hostaddr: '127.0.0.1': connection failed: connection to server at "127.0.0.1", port 5432 failed: FATAL:  password authentication failed for user "rag_user"
+(Background on this error at: https://sqlalche.me/e/20/e3q8)

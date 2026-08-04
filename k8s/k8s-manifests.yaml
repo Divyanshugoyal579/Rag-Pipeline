@@ -1,0 +1,296 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rag-system
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rag-config
+  namespace: rag-system
+data:
+  MONGO_URI: "mongodb://admin:admin_password@mongodb-service.rag-system.svc.cluster.local:27017/rag_auth_db?authSource=admin"
+  REDIS_URL: "redis://redis-service.rag-system.svc.cluster.local:6379"
+  ELASTICSEARCH_URL: "http://elasticsearch-service.rag-system.svc.cluster.local:9200"
+  POSTGRES_HOST: "postgres-service.rag-system.svc.cluster.local"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "rag_db"
+  POSTGRES_USER: "rag_user"
+  AI_SERVICE_URL: "http://ai-service.rag-system.svc.cluster.local:8000"
+  SPRING_SERVICE_URL: "http://spring-service.rag-system.svc.cluster.local:8081/api/documents"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-deployment
+  namespace: rag-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: pgvector/pgvector:pg16
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: "rag_db"
+            - name: POSTGRES_USER
+              value: "rag_user"
+            - name: POSTGRES_PASSWORD
+              value: "rag_password"
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: rag-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: rag-system
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: postgres
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway-deployment
+  namespace: rag-system
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: sovereign-api-gateway:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          envFrom:
+            - configMapRef:
+                name: rag-config
+          env:
+            - name: JWT_SECRET
+              value: "production_kube_secret_jwt_key_12345"
+            - name: JWT_REFRESH_SECRET
+              value: "production_kube_secret_refresh_jwt_key_12345"
+            - name: PORT
+              value: "5000"
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+            requests:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway-service
+  namespace: rag-system
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5000
+      targetPort: 5000
+  selector:
+    app: api-gateway
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-service-deployment
+  namespace: rag-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: spring-service
+  template:
+    metadata:
+      labels:
+        app: spring-service
+    spec:
+      containers:
+        - name: spring-service
+          image: sovereign-spring-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: rag-config
+          resources:
+            limits:
+              cpu: "1.5"
+              memory: 2Gi
+            requests:
+              cpu: 800m
+              memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /api/documents/stats
+              port: 8081
+            initialDelaySeconds: 25
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/documents/stats
+              port: 8081
+            initialDelaySeconds: 35
+            periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-service
+  namespace: rag-system
+spec:
+  ports:
+    - port: 8081
+      targetPort: 8081
+  selector:
+    app: spring-service
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-service-deployment
+  namespace: rag-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ai-service
+  template:
+    metadata:
+      labels:
+        app: ai-service
+    spec:
+      containers:
+        - name: ai-service
+          image: sovereign-ai-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: rag-config
+          env:
+            - name: OPENAI_API_KEY
+              value: "sk-production-openai-api-key-here"
+          resources:
+            limits:
+              cpu: "2"
+              memory: 4Gi
+            requests:
+              cpu: "1"
+              memory: 2Gi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-service
+  namespace: rag-system
+spec:
+  ports:
+    - port: 8000
+      targetPort: 8000
+  selector:
+    app: ai-service
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rag-ingress
+  namespace: rag-system
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: sovereign-rag.enterprise.internal
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway-service
+                port:
+                  number: 5000
