@@ -17,7 +17,7 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter basename={import.meta.env.BASE_URL}>
+      <BrowserRouter basename={window.location.pathname.startsWith('/Rag-Pipeline') ? '/Rag-Pipeline' : '/'}>
         <div className="mesh-bg"></div>
         <div className="noise-overlay"></div>
         <App />
