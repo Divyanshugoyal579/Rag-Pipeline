@@ -32,5 +32,6 @@ router.get('/chat/conversations', globalLimiter, authenticate, chatController.li
 router.get('/chat/conversation/:id', globalLimiter, authenticate, chatController.getConversation);
 router.delete('/chat/conversation/:id', globalLimiter, authenticate, chatController.deleteConversation);
 router.post('/chat/query', globalLimiter, authenticate, chatController.chatStream);
+router.post('/chat/public-query', globalLimiter, chatController.publicChatStream);
 
 export default router;

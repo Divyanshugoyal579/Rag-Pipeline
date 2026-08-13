@@ -1,4 +1,4 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import axios from 'axios';
 import { Conversation } from '../models/chat.model';
 import { AuthenticatedRequest, IMessage } from '../types';
@@ -243,6 +243,60 @@ export const chatStream = async (
 
   } catch (error: any) {
     logger.error(`Chat Stream controller failure: ${error.message}`);
+    next(error);
+    return;
+  }
+};
+
+export const publicChatStream = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { query, filters } = req.body;
+
+    if (!query) {
+      res.status(400).json({ error: 'Query is required' });
+      return;
+    }
+
+    // Prepare headers for SSE stream
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    logger.info(`Proxying public RAG lookup query to FastAPI AI Service`);
+
+    const aiServiceResponse = await axios({
+      method: 'POST',
+      url: `${config.aiServiceUrl}/query`,
+      data: {
+        query,
+        history: [], // Public lookup has no history
+        filters: filters || {},
+      },
+      responseType: 'stream',
+    });
+
+    // Pipe response chunks from AI service to Express client
+    aiServiceResponse.data.on('data', (chunk: Buffer) => {
+      res.write(chunk);
+    });
+
+    aiServiceResponse.data.on('end', () => {
+      res.write('data: [DONE]\n\n');
+      res.end();
+    });
+
+    aiServiceResponse.data.on('error', (err: Error) => {
+      logger.error(`Error in public stream from AI service: ${err.message}`);
+      res.status(500).write(`data: ${JSON.stringify({ error: 'Stream failed' })}\n\n`);
+      res.end();
+    });
+
+  } catch (error: any) {
+    logger.error(`Public Chat Stream controller failure: ${error.message}`);
     next(error);
     return;
   }

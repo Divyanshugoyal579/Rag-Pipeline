@@ -27,7 +27,7 @@ import {
   BarChart,
   Bar
 } from 'recharts';
-import { api, streamChatQuery, Citation } from './services/api';
+import { api, streamChatQuery, streamPublicChatQuery, Citation } from './services/api';
 
 // --- AUTH GUARDS ---
 interface User {
@@ -45,20 +45,275 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 
 
+// --- PUBLIC LOOKUP PAGE ---
+function LookupPage() {
+  const navigate = useNavigate();
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [answer, setAnswer] = useState('');
+  const [citations, setCitations] = useState<Citation[]>([]);
+  const [error, setError] = useState('');
+  const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  const isLoggedIn = !!localStorage.getItem('accessToken');
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!query.trim() || loading) return;
+
+    setLoading(true);
+    setAnswer('');
+    setCitations([]);
+    setError('');
+    setHasSearched(true);
+    setActiveCitation(null);
+
+    await streamPublicChatQuery({
+      query: query,
+      onToken: (token) => {
+        setAnswer((prev) => prev + token);
+      },
+      onCitations: (cites) => {
+        setCitations(cites);
+      },
+      onError: (err) => {
+        console.error(err);
+        setError(err || 'Failed to retrieve answer from the RAG pipeline.');
+        setLoading(false);
+      },
+      onDone: () => {
+        setLoading(false);
+      },
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-[#050505] flex flex-col justify-between overflow-x-hidden relative">
+      {/* Header */}
+      <header className="px-8 py-5 border-b border-oled-border flex items-center justify-between bg-[#080808]/60 backdrop-blur-md sticky top-0 z-30">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-brand-purple flex items-center justify-center text-white font-bold border border-brand-purple/30">
+            S
+          </div>
+          <div>
+            <h1 className="text-sm font-bold tracking-tight text-white">SOVEREIGN RAG</h1>
+            <p className="text-[10px] text-gray-500 font-mono">Hybrid Knowledge Console</p>
+          </div>
+        </div>
+
+        <div>
+          {isLoggedIn ? (
+            <button
+              onClick={() => navigate('/portal')}
+              className="py-1.5 px-4 rounded-lg bg-brand-purple text-white text-xs font-semibold hover:bg-brand-purple/90 transition-colors flex items-center gap-1.5 shadow-md shadow-brand-purple/10"
+            >
+              <span>Go to Portal</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate('/login')}
+              className="py-1.5 px-4 rounded-lg bg-white/5 hover:bg-white/10 border border-oled-border text-xs text-gray-200 hover:text-white font-medium transition-all"
+            >
+              Portal Sign In
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* Main Body */}
+      <main className="flex-grow max-w-4xl w-full mx-auto px-6 py-12 flex flex-col justify-center gap-10">
+        {/* Intro */}
+        {!hasSearched && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-center space-y-4 max-w-2xl mx-auto mt-10"
+          >
+            <div className="inline-flex items-center gap-1.5 py-1 px-3 rounded-full bg-brand-emerald/10 border border-brand-emerald/20 text-[10px] text-brand-emerald font-semibold uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-emerald animate-pulse"></span>
+              Public Knowledge Search
+            </div>
+            <h2 className="text-4xl font-extrabold tracking-tight text-white lg:text-5xl">
+              Search the Enterprise Corpus
+            </h2>
+            <p className="text-sm text-gray-400 max-w-lg mx-auto leading-relaxed">
+              Query our secure hybrid search pipeline utilizing semantic vector search and BM25 exact keyword matching.
+            </p>
+          </motion.div>
+        )}
+
+        {/* Search Bar Container */}
+        <motion.div
+          layout
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          className={`w-full ${hasSearched ? 'mt-0' : 'mt-4'}`}
+        >
+          <div className="outer-shell">
+            <div className="inner-core p-4">
+              <form onSubmit={handleSearch} className="flex gap-3 items-center">
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Ask a question about the documentation..."
+                    className="w-full bg-transparent border-0 outline-none text-sm text-gray-100 placeholder-gray-600 py-2.5 px-3 focus:ring-0"
+                    disabled={loading}
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading || !query.trim()}
+                  className="py-2.5 px-6 rounded-lg bg-brand-purple hover:bg-brand-purple/90 disabled:opacity-40 disabled:hover:bg-brand-purple text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md shadow-brand-purple/10 flex-shrink-0"
+                >
+                  {loading ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    <span>Search</span>
+                  )}
+                </button>
+              </form>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* RAG Results Area */}
+        <AnimatePresence>
+          {hasSearched && (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5 }}
+              className="space-y-6 flex-1 flex flex-col md:flex-row gap-6 items-start justify-between min-h-[300px]"
+            >
+              {/* Answer Content */}
+              <div className="flex-1 w-full bg-white/5 border border-oled-border rounded-2xl p-6 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-white/5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-brand-purple/20 flex items-center justify-center text-brand-purple text-[10px] font-bold border border-brand-purple/30">
+                      AI
+                    </div>
+                    <span className="text-xs font-bold text-gray-200">RAG Synthesis</span>
+                  </div>
+                  {loading && (
+                    <div className="text-[10px] text-brand-purple flex items-center gap-1.5 animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand-purple animate-ping"></span>
+                      Streaming Response...
+                    </div>
+                  )}
+                </div>
+
+                {error ? (
+                  <div className="flex items-center gap-2.5 p-3 rounded-lg bg-red-950/20 border border-red-900/30 text-xs text-red-400">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap font-sans">
+                    {answer || (loading ? "Retrieving source chunks and generating answer..." : "")}
+                  </p>
+                )}
+
+                {/* Citations list under the answer */}
+                {citations.length > 0 && (
+                  <div className="pt-4 border-t border-white/5 space-y-3">
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Sources & Citations</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {citations.map((cite, cidx) => (
+                        <button
+                          key={cidx}
+                          onClick={() => setActiveCitation(cite)}
+                          className={`py-1 px-2.5 rounded-full border text-[10px] flex items-center gap-1.5 transition-all ${
+                            activeCitation === cite
+                              ? 'bg-brand-purple/20 border-brand-purple text-brand-purple'
+                              : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <BookOpen className="w-3 h-3" />
+                          <span>Source [{cidx + 1}]: {cite.source.split('/').pop()?.substring(0, 15)}...</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Citation Detail Panel */}
+              {activeCitation && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="w-full md:w-80 bg-white/5 border border-oled-border rounded-2xl p-5 space-y-3 flex-shrink-0"
+                >
+                  <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                    <h3 className="text-xs font-bold text-gray-200">Citation Inspector</h3>
+                    <button
+                      onClick={() => setActiveCitation(null)}
+                      className="text-[10px] text-gray-500 hover:text-white transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-[10px] text-gray-400">
+                      <span className="font-semibold text-gray-300">File: </span>
+                      <span className="font-mono text-gray-200 break-all">{activeCitation.source.split('/').pop()}</span>
+                    </div>
+                    {activeCitation.page_number && (
+                      <div className="text-[10px] text-gray-400">
+                        <span className="font-semibold text-gray-300">Page: </span>
+                        <span>{activeCitation.page_number}</span>
+                      </div>
+                    )}
+                    {activeCitation.score && (
+                      <div className="text-[10px] text-gray-400">
+                        <span className="font-semibold text-gray-300">Relevance Score: </span>
+                        <span className="font-mono text-brand-emerald">{(activeCitation.score * 100).toFixed(1)}%</span>
+                      </div>
+                    )}
+                    <div className="mt-3">
+                      <div className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Matched Snippet</div>
+                      <div className="p-3 rounded-lg bg-black/40 border border-white/5 text-[10px] text-gray-400 leading-relaxed max-h-48 overflow-y-auto whitespace-pre-wrap font-sans">
+                        "{activeCitation.snippet}"
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
+
+      {/* Footer */}
+      <footer className="px-8 py-5 border-t border-oled-border text-center text-[10px] text-gray-600 bg-[#080808]/20 mt-10">
+        © 2026 Sovereign AI Corp. Powered by Hybrid pgvector + Elasticsearch search topology.
+      </footer>
+    </div>
+  );
+}
+
 // --- APP ROOT ---
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<LookupPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route
-        path="/*"
+        path="/portal/*"
         element={
           <ProtectedRoute>
             <DashboardLayout />
           </ProtectedRoute>
         }
       />
+      <Route path="/*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
@@ -912,7 +1167,7 @@ function Login() {
       localStorage.setItem('accessToken', res.data.accessToken);
       localStorage.setItem('refreshToken', res.data.refreshToken);
       localStorage.setItem('user', JSON.stringify(res.data.user));
-      navigate('/');
+      navigate('/portal');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Authentication failed');
     } finally {
@@ -1018,7 +1273,7 @@ function Register() {
       localStorage.setItem('accessToken', res.data.accessToken);
       localStorage.setItem('refreshToken', res.data.refreshToken);
       localStorage.setItem('user', JSON.stringify(res.data.user));
-      navigate('/');
+      navigate('/portal');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Registration failed');
     } finally {

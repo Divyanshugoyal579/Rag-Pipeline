@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -120,6 +120,86 @@ export const streamChatQuery = async ({
       const lines = buffer.split('\n');
 
       // Keep the last incomplete line in the buffer
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const cleaned = line.trim();
+        if (cleaned.startsWith('data: ')) {
+          const dataStr = cleaned.slice(6).trim();
+          if (dataStr === '[DONE]') {
+            onDone();
+            return;
+          }
+
+          try {
+            const parsed = JSON.parse(dataStr);
+            if (parsed.text) {
+              onToken(parsed.text);
+            }
+            if (parsed.citations) {
+              onCitations(parsed.citations);
+            }
+            if (parsed.error) {
+              onError(parsed.error);
+            }
+          } catch (e) {
+            // Ignored, SSE packet could be fragmented
+          }
+        }
+      }
+    }
+  } catch (error: any) {
+    onError(error.message || 'Network stream error');
+  }
+};
+
+export interface StreamPublicChatParams {
+  query: string;
+  filters?: Record<string, any>;
+  onToken: (token: string) => void;
+  onCitations: (citations: Citation[]) => void;
+  onError: (err: string) => void;
+  onDone: () => void;
+}
+
+export const streamPublicChatQuery = async ({
+  query,
+  filters,
+  onToken,
+  onCitations,
+  onError,
+  onDone,
+}: StreamPublicChatParams) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/chat/public-query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query,
+        filters,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server returned HTTP status ${response.status}`);
+    }
+
+    if (!response.body) {
+      throw new Error('Readable stream not supported by response');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
       buffer = lines.pop() || '';
 
       for (const line of lines) {
