@@ -1,0 +1,17 @@
+# GitHub Pages / Jekyll Configuration
+# Exclude code and dependency directories from Jekyll parsing to prevent Liquid syntax errors.
+
+exclude:
+  - ai-service
+  - api-gateway
+  - spring-service
+  - frontend
+  - k8s
+  - .agents
+  - .claude
+  - .codex
+  - .impeccable
+  - node_modules
+  - vendor
+  - Gemfile
+  - Gemfile.lock
