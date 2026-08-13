@@ -6,7 +6,7 @@ langchain
 langchain-community
 langchain-openai
 langgraph
-elasticsearch
+elasticsearch>=8.0.0,<9.0.0
 redis
 psycopg[binary]
 asyncpg

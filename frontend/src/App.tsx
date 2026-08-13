@@ -7,7 +7,6 @@ import {
   FileText,
   Trash2,
   PieChart,
-  User as UserIcon,
   LogOut,
   Send,
   Plus,
@@ -16,9 +15,7 @@ import {
   CheckCircle,
   AlertCircle,
   FileCode,
-  Shield,
-  Search,
-  Filter
+  Shield
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -46,16 +43,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const AdminRoute = ({ children }: { children: React.ReactNode }) => {
-  const token = localStorage.getItem('accessToken');
-  const userJson = localStorage.getItem('user');
-  const user: User | null = userJson ? JSON.parse(userJson) : null;
-  
-  if (!token || user?.role !== 'admin') {
-    return <Navigate to="/" replace />;
-  }
-  return <>{children}</>;
-};
+
 
 // --- APP ROOT ---
 export default function App() {
@@ -580,7 +568,6 @@ function UploadPanel() {
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
-  const [ingestedCount, setIngestedCount] = useState(0);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -617,13 +604,12 @@ function UploadPanel() {
     formData.append('file', file);
 
     try {
-      const res = await api.post('/documents/upload', formData, {
+      await api.post('/documents/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
       setUploadStatus('success');
-      setIngestedCount((prev) => prev + 1);
     } catch (err: any) {
       setUploadStatus('error');
       setErrorMessage(err.response?.data?.error || 'Ingestion request failed');
@@ -736,10 +722,7 @@ function AdminDashboard() {
     { name: '15:00', queries: 72, latency: 95 },
   ];
 
-  const distributionData = [
-    { name: 'Semantic', value: 85 },
-    { name: 'BM25 Exact', value: 15 },
-  ];
+
 
   useEffect(() => {
     fetchStats();

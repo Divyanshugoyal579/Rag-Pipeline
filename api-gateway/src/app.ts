@@ -32,7 +32,7 @@ app.use(morgan(':method :url :status :res[content-length] - :response-time ms', 
 app.use('/api', gatewayRoutes);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),

@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: rag_user
       POSTGRES_PASSWORD: rag_password
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:

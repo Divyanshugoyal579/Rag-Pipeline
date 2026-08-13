@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = Field(default="rag_password")
     POSTGRES_DB: str = Field(default="rag_db")
     POSTGRES_HOST: str = Field(default="localhost")
-    POSTGRES_PORT: str = Field(default="5432")
+    POSTGRES_PORT: str = Field(default="5433")
 
     # Elasticsearch
     ELASTICSEARCH_URL: str = Field(default="http://localhost:9200")

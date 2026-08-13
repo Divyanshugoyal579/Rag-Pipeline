@@ -13,10 +13,12 @@ export const uploadDocument = async (
 ) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      res.status(400).json({ error: 'No file uploaded' });
+      return;
     }
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const { originalname, path: filePath, mimetype } = req.file;
@@ -54,7 +56,8 @@ export const uploadDocument = async (
       fs.unlinkSync(filePath);
     }
 
-    return res.status(springResponse.status).json(springResponse.data);
+    res.status(springResponse.status).json(springResponse.data);
+    return;
 
   } catch (error: any) {
     // Make sure we clean up the file even if upload fails
@@ -63,6 +66,7 @@ export const uploadDocument = async (
     }
     logger.error(`Failed to forward upload to Spring Boot: ${error.message}`);
     next(error);
+    return;
   }
 };
 
@@ -73,7 +77,8 @@ export const listDocuments = async (
 ) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     logger.info(`Proxying listDocuments to Spring Boot Service`);
@@ -84,9 +89,11 @@ export const listDocuments = async (
       },
     });
 
-    return res.status(response.status).json(response.data);
+    res.status(response.status).json(response.data);
+    return;
   } catch (error) {
     next(error);
+    return;
   }
 };
 
@@ -97,16 +104,19 @@ export const deleteDocument = async (
 ) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const docId = req.params.id;
     logger.info(`Proxying deleteDocument ${docId} to Spring Boot Service`);
     
     const response = await axios.delete(`${config.springServiceUrl}/${docId}`);
-    return res.status(response.status).json(response.data);
+    res.status(response.status).json(response.data);
+    return;
   } catch (error) {
     next(error);
+    return;
   }
 };
 
@@ -117,7 +127,8 @@ export const getStats = async (
 ) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     logger.info(`Proxying getStats to Spring Boot Service`);
@@ -128,8 +139,10 @@ export const getStats = async (
       },
     });
 
-    return res.status(response.status).json(response.data);
+    res.status(response.status).json(response.data);
+    return;
   } catch (error) {
     next(error);
+    return;
   }
 };

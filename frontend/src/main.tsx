@@ -18,8 +18,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div class="mesh-bg"></div>
-        <div class="noise-overlay"></div>
+        <div className="mesh-bg"></div>
+        <div className="noise-overlay"></div>
         <App />
       </BrowserRouter>
     </QueryClientProvider>

@@ -12,7 +12,8 @@ export const startConversation = async (
 ) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const { title } = req.body;
@@ -25,9 +26,11 @@ export const startConversation = async (
     await conversation.save();
     logger.info(`Conversation started: ${conversation._id}`);
 
-    return res.status(201).json(conversation);
+    res.status(201).json(conversation);
+    return;
   } catch (error) {
     next(error);
+    return;
   }
 };
 
@@ -38,16 +41,19 @@ export const listConversations = async (
 ) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const conversations = await Conversation.find({ userId: req.user.id })
       .select('title createdAt updatedAt')
       .sort({ updatedAt: -1 });
 
-    return res.status(200).json(conversations);
+    res.status(200).json(conversations);
+    return;
   } catch (error) {
     next(error);
+    return;
   }
 };
 
@@ -58,7 +64,8 @@ export const getConversation = async (
 ) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const conversation = await Conversation.findOne({
@@ -67,12 +74,15 @@ export const getConversation = async (
     });
 
     if (!conversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
+      res.status(404).json({ error: 'Conversation not found' });
+      return;
     }
 
-    return res.status(200).json(conversation);
+    res.status(200).json(conversation);
+    return;
   } catch (error) {
     next(error);
+    return;
   }
 };
 
@@ -83,7 +93,8 @@ export const deleteConversation = async (
 ) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const conversation = await Conversation.findOneAndDelete({
@@ -92,13 +103,16 @@ export const deleteConversation = async (
     });
 
     if (!conversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
+      res.status(404).json({ error: 'Conversation not found' });
+      return;
     }
 
     logger.info(`Conversation deleted: ${req.params.id}`);
-    return res.status(200).json({ message: 'Conversation deleted successfully' });
+    res.status(200).json({ message: 'Conversation deleted successfully' });
+    return;
   } catch (error) {
     next(error);
+    return;
   }
 };
 
@@ -109,13 +123,15 @@ export const chatStream = async (
 ) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
     }
 
     const { conversationId, query, filters } = req.body;
 
     if (!query) {
-      return res.status(400).json({ error: 'Query is required' });
+      res.status(400).json({ error: 'Query is required' });
+      return;
     }
 
     const conversation = await Conversation.findOne({
@@ -124,7 +140,8 @@ export const chatStream = async (
     });
 
     if (!conversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
+      res.status(404).json({ error: 'Conversation not found' });
+      return;
     }
 
     // Save user message to database
@@ -227,5 +244,6 @@ export const chatStream = async (
   } catch (error: any) {
     logger.error(`Chat Stream controller failure: ${error.message}`);
     next(error);
+    return;
   }
 };
